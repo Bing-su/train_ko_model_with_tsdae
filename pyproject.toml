@@ -1,0 +1,15 @@
+[project]
+name = "train_ko_model_with_tsdae"
+description = "Train a Korean language model with TSDAE"
+license = "MIT"
+readme = "README.md"
+requires-python = ">=3.9"
+authors = [
+    { name = "Dowon", email = "ks2515@naver.com"}
+]
+
+[project.urls]
+repository = ""
+
+[tool.isort]
+profile = "black"
