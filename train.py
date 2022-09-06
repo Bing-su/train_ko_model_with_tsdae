@@ -1,0 +1,138 @@
+import os
+from textwrap import dedent
+from typing import Optional
+
+import pytorch_lightning as pl
+import typer
+import yaml
+from datasets import load_dataset
+from pytorch_lightning.callbacks import LearningRateMonitor, RichProgressBar
+from pytorch_lightning.loggers import WandbLogger
+from torch.utils.data import DataLoader
+from typer import Argument, Option, Typer
+
+from tsdae import KoDenoisingAutoEncoderDataset, KoTSDAEModule
+
+cli = Typer(name="tsdae")
+
+decoder_name_desc = """
+    디코더로 사용할 모델의 이름 또는 경로,
+    훈련할 모델을 AutoModelForCausalLM으로 불러올 수 있고,
+    해당 AutoModelForCausalLM이 `encoder_hidden_states`를
+    입력으로 받을 수 있다면 `None`으로 설정하십시오.
+    이 링크에서 확인:
+    https://huggingface.co/docs/transformers/model_doc/auto#transformers.AutoModelForCausalLM
+    """
+decoder_name_desc = dedent(decoder_name_desc).strip().replace("\n", " ")
+
+
+def config_callback(ctx: typer.Context, param: typer.CallbackParam, value: str):
+    if value:
+        typer.echo(f"Loading config file: {value}")
+        try:
+            with open(value) as f:  # Load config file
+                conf = yaml.safe_load(f)
+            ctx.default_map = ctx.default_map or {}  # Initialize the default map
+            ctx.default_map.update(conf)  # Merge the config dict into default_map
+        except Exception as ex:
+            raise typer.BadParameter(str(ex)) from ex
+    return value
+
+
+@cli.command(no_args_is_help=True)
+def main(
+    model_name_or_path: str = Argument(
+        ...,
+        help="사용할 모델의 huggingface 이름, 또는 경로",
+        rich_help_panel="모델",
+        show_default=False,
+    ),
+    dataset_name: str = Argument(
+        ..., help="사용할 데이터셋의 huggingface 이름", rich_help_panel="데이터", show_default=False
+    ),
+    config: Optional[str] = Option(
+        None, help="설정을 담은 yaml 파일 경로", callback=config_callback, is_eager=True
+    ),
+    optimizer_name: str = Option(
+        "adamp",
+        help="사용할 옵티마이저의 이름, pytorch_optimizer에서 지원하는 옵티마이저",
+        rich_help_panel="훈련",
+    ),
+    lr: float = Option(5e-5, help="Learning rate", rich_help_panel="훈련"),
+    weight_decay: float = Option(
+        0.0, help="Weight decay", min=0.0, max=1.0, rich_help_panel="훈련"
+    ),
+    batch_size: int = Option(8, help="Batch size", min=1, rich_help_panel="훈련"),
+    max_steps: int = Option(1_000_000, help="훈련 스텝 수", rich_help_panel="훈련"),
+    gradient_clip_val: Optional[float] = Option(
+        None, help="Gradient clipping", min=0.0, rich_help_panel="훈련"
+    ),
+    decoder_name: Optional[str] = Option(
+        None, help=decoder_name_desc, rich_help_panel="모델"
+    ),
+    dataset_name2: Optional[str] = Option(
+        None, help="load_dataset의 두 번째 인자로 들어갈 이름", rich_help_panel="데이터"
+    ),
+    dataset_split: str = Option(
+        "train", help="데이터셋에서 사용할 split", rich_help_panel="데이터"
+    ),
+    text_col: str = Option("text", help="데이터셋에서 text를 담은 열의 이름", rich_help_panel="데이터"),
+    use_auth_token: Optional[bool] = Option(
+        None, help="huggingface auth token", rich_help_panel="데이터"
+    ),
+    num_workers: int = Option(
+        8, help="데이터 로더에서 사용할 프로세스 수, windows면 0으로 고정됨", rich_help_panel="훈련"
+    ),
+    test_run: bool = Option(False, help="훈련 테스트를 실행합니다.", rich_help_panel="훈련"),
+    output_path: Optional[str] = Option(None, help="모델을 저장할 경로", rich_help_panel="훈련"),
+):
+    # 모델
+    module = KoTSDAEModule(
+        model=model_name_or_path,
+        optimizer_name=optimizer_name,
+        lr=lr,
+        weight_decay=weight_decay,
+        decoder_name=decoder_name,
+    )
+
+    # 데이터셋
+    hf_dataset = load_dataset(
+        dataset_name, dataset_name2, use_auth_token=use_auth_token, split=dataset_split
+    )
+    dataset = KoDenoisingAutoEncoderDataset(hf_dataset, text_col)
+
+    if os.name == "nt":
+        num_workers = 0
+
+    # 데이터로더
+    train_loader = DataLoader(
+        dataset,
+        batch_size=batch_size,
+        shuffle=True,
+        collate_fn=module.model.smart_batching_collate,
+        num_workers=num_workers,
+    )
+
+    # 훈련
+    if output_path is None:
+        output_path = model_name_or_path
+
+    wandb_logger = WandbLogger(project="tsdae")
+    wandb_logger.watch(module)
+    trainer = pl.Trainer(
+        accelerator="auto",
+        gpus=1,
+        logger=wandb_logger,
+        max_steps=max_steps,
+        gradient_clip_val=gradient_clip_val,
+        callbacks=[LearningRateMonitor(), RichProgressBar()],
+        precision=16,
+        fast_dev_run=test_run,
+    )
+    trainer.fit(module, train_dataloaders=train_loader)
+
+    module.model.save(output_path)
+
+
+if __name__ == "__main__":
+    cli()

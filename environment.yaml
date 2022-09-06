@@ -21,6 +21,7 @@ dependencies:
   - typer
   - shellingham
   - loguru
+  - pyyaml
 
   - black
   - isort
