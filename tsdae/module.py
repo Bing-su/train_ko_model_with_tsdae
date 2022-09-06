@@ -17,11 +17,12 @@ class KoTSDAEModule(pl.LightningModule):
         lr: float = 5e-5,
         weight_decay: float = 0.0,
         decoder_name: Optional[str] = None,
+        max_seq_length: Optional[int] = None,
     ):
         super().__init__()
         self.save_hyperparameters()
         if isinstance(model, str):
-            self.model = build_sentence_transformer(model)
+            self.model = build_sentence_transformer(model, max_seq_length)
         else:
             self.model = model
 

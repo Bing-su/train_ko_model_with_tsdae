@@ -16,6 +16,11 @@ from tsdae import KoDenoisingAutoEncoderDataset, KoTSDAEModule
 
 cli = Typer(name="tsdae", pretty_exceptions_show_locals=False)
 
+
+def dedent_text(text: str) -> str:
+    return dedent(decoder_name_desc).strip().replace("\n", " ")
+
+
 decoder_name_desc = """
     디코더로 사용할 모델의 이름 또는 경로,
     훈련할 모델을 AutoModelForCausalLM으로 불러올 수 있고,
@@ -24,7 +29,14 @@ decoder_name_desc = """
     이 링크에서 확인:
     https://huggingface.co/docs/transformers/model_doc/auto#transformers.AutoModelForCausalLM
     """
-decoder_name_desc = dedent(decoder_name_desc).strip().replace("\n", " ")
+decoder_name_desc = dedent_text(decoder_name_desc)
+
+max_seq_length_desc = """
+    모델이 입력으로 받을 수 있는 최대 길이,
+    `CUDA error: device-side assert triggered` 에러 발생시
+    수동으로 조절해보십시오.
+    """
+max_seq_length_desc = dedent_text(max_seq_length_desc)
 
 
 def config_callback(
@@ -52,6 +64,9 @@ def main(
     ),
     dataset_name: str = Argument(
         ..., help="사용할 데이터셋의 huggingface 이름", rich_help_panel="데이터", show_default=False
+    ),
+    max_seq_length: Optional[int] = Option(
+        None, help=max_seq_length_desc, rich_help_panel="모델"
     ),
     config: Optional[str] = Option(
         None, help="설정을 담은 yaml 파일 경로", callback=config_callback, is_eager=True
@@ -89,7 +104,7 @@ def main(
     num_workers: int = Option(
         8, help="데이터 로더에서 사용할 프로세스 수, windows면 0으로 고정됨", rich_help_panel="훈련"
     ),
-    test_run: bool = Option(False, help="훈련 테스트를 실행합니다.", rich_help_panel="훈련"),
+    fast_dev_run: bool = Option(False, help="훈련 테스트를 실행합니다.", rich_help_panel="훈련"),
     output_path: Optional[str] = Option(None, help="모델을 저장할 경로", rich_help_panel="훈련"),
     wandb_name: Optional[str] = Option(None, help="wandb 이름", rich_help_panel="훈련"),
     log_every_n_steps: int = Option(50, help="몇 스텝마다 로그를 남길지", rich_help_panel="훈련"),
@@ -101,6 +116,7 @@ def main(
         lr=lr,
         weight_decay=weight_decay,
         decoder_name=decoder_name,
+        max_seq_length=max_seq_length,
     )
     logger.debug("모델 생성 완료")
 
@@ -145,7 +161,7 @@ def main(
         callbacks=[LearningRateMonitor(logging_interval="step"), RichProgressBar()],
         precision=16,
         log_every_n_steps=log_every_n_steps,
-        fast_dev_run=test_run,
+        fast_dev_run=fast_dev_run,
     )
     logger.debug("훈련 시작")
     trainer.fit(module, train_dataloaders=train_loader)
