@@ -6,6 +6,7 @@ import pytorch_lightning as pl
 import typer
 import yaml
 from datasets import load_dataset
+from loguru import logger
 from pytorch_lightning.callbacks import LearningRateMonitor, RichProgressBar
 from pytorch_lightning.loggers import WandbLogger
 from torch.utils.data import DataLoader
@@ -26,7 +27,9 @@ decoder_name_desc = """
 decoder_name_desc = dedent(decoder_name_desc).strip().replace("\n", " ")
 
 
-def config_callback(ctx: typer.Context, param: typer.CallbackParam, value: str):
+def config_callback(
+    ctx: typer.Context, param: typer.CallbackParam, value: Optional[str]
+):
     if value:
         typer.echo(f"Loading config file: {value}")
         try:
@@ -85,6 +88,7 @@ def main(
     ),
     test_run: bool = Option(False, help="훈련 테스트를 실행합니다.", rich_help_panel="훈련"),
     output_path: Optional[str] = Option(None, help="모델을 저장할 경로", rich_help_panel="훈련"),
+    wandb_name: Optional[str] = Option(None, help="wandb 이름", rich_help_panel="훈련"),
 ):
     # 모델
     module = KoTSDAEModule(
@@ -94,14 +98,17 @@ def main(
         weight_decay=weight_decay,
         decoder_name=decoder_name,
     )
+    logger.debug("모델 생성 완료")
 
     # 데이터셋
     hf_dataset = load_dataset(
         dataset_name, dataset_name2, use_auth_token=use_auth_token, split=dataset_split
     )
     dataset = KoDenoisingAutoEncoderDataset(hf_dataset, text_col)
+    logger.debug("데이터셋 생성 완료")
 
     if os.name == "nt":
+        logger.warning("윈도우에서는 num_workers를 0으로 고정합니다.")
         num_workers = 0
 
     # 데이터로더
@@ -115,10 +122,15 @@ def main(
 
     # 훈련
     if output_path is None:
-        output_path = model_name_or_path
+        output_path = "result"
+    logger.info(f"훈련 결과를 {output_path}에 저장합니다.")
 
-    wandb_logger = WandbLogger(project="tsdae")
+    if wandb_name is None:
+        wandb_name = f"{model_name_or_path}-{dataset_name}"
+
+    wandb_logger = WandbLogger(name=wandb_name, project="tsdae")
     wandb_logger.watch(module)
+
     trainer = pl.Trainer(
         accelerator="auto",
         gpus=1,
@@ -129,9 +141,12 @@ def main(
         precision=16,
         fast_dev_run=test_run,
     )
+    logger.debug("훈련 시작")
     trainer.fit(module, train_dataloaders=train_loader)
 
+    logger.debug("훈련 종료")
     module.model.save(output_path)
+    logger.debug("모델 저장 완료")
 
 
 if __name__ == "__main__":

@@ -1,4 +1,4 @@
-from __future__ import annotations
+from typing import Optional, Union
 
 import pytorch_lightning as pl
 import torch
@@ -12,11 +12,11 @@ from .util import build_sentence_transformer
 class KoTSDAEModule(pl.LightningModule):
     def __init__(
         self,
-        model: str | SentenceTransformer,
+        model: Union[str, SentenceTransformer],
         optimizer_name: str = "adamp",
         lr: float = 5e-5,
         weight_decay: float = 0.0,
-        decoder_name: str | None = None,
+        decoder_name: Optional[str] = None,
     ):
         super().__init__()
         self.save_hyperparameters()

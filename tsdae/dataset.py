@@ -1,6 +1,4 @@
-from __future__ import annotations
-
-from typing import TYPE_CHECKING, Callable
+from typing import TYPE_CHECKING, Callable, Optional
 
 import numpy as np
 from datasets import Dataset
@@ -29,7 +27,7 @@ class KoDenoisingAutoEncoderDataset(data.Dataset):
         dataset: Dataset,
         text_col: str,
         p: float = 0.6,
-        noise_fn: Callable[[str], str] | None = None,
+        noise_fn: Optional[Callable[[str], str]] = None,
     ):
         self.dataset = dataset
         self.text_col = text_col
