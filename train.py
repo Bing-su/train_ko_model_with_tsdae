@@ -7,7 +7,11 @@ import typer
 import yaml
 from datasets import load_dataset
 from loguru import logger
-from pytorch_lightning.callbacks import LearningRateMonitor, RichProgressBar
+from pytorch_lightning.callbacks import (
+    LearningRateMonitor,
+    ModelCheckpoint,
+    RichProgressBar,
+)
 from pytorch_lightning.loggers import WandbLogger
 from torch.utils.data import DataLoader
 from typer import Argument, Option, Typer
@@ -106,8 +110,11 @@ def main(
     ),
     fast_dev_run: bool = Option(False, help="훈련 테스트를 실행합니다.", rich_help_panel="훈련"),
     output_path: Optional[str] = Option(None, help="모델을 저장할 경로", rich_help_panel="훈련"),
+    save_steps: int = Option(10_000, help="모델을 저장할 주기", rich_help_panel="훈련"),
+    save_top_k: int = Option(3, min=1, help="모델을 저장할 최대 개수", rich_help_panel="훈련"),
     wandb_name: Optional[str] = Option(None, help="wandb 이름", rich_help_panel="훈련"),
-    log_every_n_steps: int = Option(50, help="몇 스텝마다 로그를 남길지", rich_help_panel="훈련"),
+    log_every_n_steps: int = Option(200, help="몇 스텝마다 로그를 남길지", rich_help_panel="훈련"),
+    seed: int = Option(42, help="랜덤 시드", rich_help_panel="훈련"),
 ):
     # 모델
     module = KoTSDAEModule(
@@ -151,6 +158,15 @@ def main(
     wandb_logger = WandbLogger(name=wandb_name, project="tsdae")
     wandb_logger.watch(module)
 
+    pl.seed_everything(seed)
+    callbacks = [
+        LearningRateMonitor(logging_interval="step"),
+        RichProgressBar(refresh_rate=10),
+        ModelCheckpoint(
+            dirpath="checkpoints", save_top_k=save_top_k, every_n_train_steps=save_steps
+        ),
+    ]
+
     trainer = pl.Trainer(
         accelerator="auto",
         gpus=1,
@@ -158,7 +174,7 @@ def main(
         max_steps=max_steps,
         gradient_clip_val=gradient_clip_val,
         accumulate_grad_batches=accumulate_grad_batches,
-        callbacks=[LearningRateMonitor(logging_interval="step"), RichProgressBar()],
+        callbacks=callbacks,
         precision=16,
         log_every_n_steps=log_every_n_steps,
         fast_dev_run=fast_dev_run,
