@@ -1,0 +1,6 @@
+model_name_or_path: Bingsu/my_roberta_untrained
+dataset_name: Bingsu/my-korean-training-corpus-half
+use_auth_token: true
+optimizer_name: adan
+batch_size: 16
+gradient_clip_val: 5.0
