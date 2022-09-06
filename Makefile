@@ -1,4 +1,4 @@
-.PHONY: install install-conda format
+.PHONY: install install-conda format run
 
 install:
 	mamba env create -n tsdae -f environment.yaml
@@ -8,3 +8,6 @@ install-conda:
 
 format:
 	pre-commit run -a
+
+run:
+	python train.py --config config.yaml

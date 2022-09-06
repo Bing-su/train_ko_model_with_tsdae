@@ -79,3 +79,6 @@ class KoTSDAEModule(pl.LightningModule):
             "train/loss", loss, on_step=True, on_epoch=True, prog_bar=True, logger=True
         )
         return loss
+
+    def save(self, path: str):
+        self.model.save(path)
