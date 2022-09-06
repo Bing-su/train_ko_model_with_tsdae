@@ -14,7 +14,7 @@ from typer import Argument, Option, Typer
 
 from tsdae import KoDenoisingAutoEncoderDataset, KoTSDAEModule
 
-cli = Typer(name="tsdae")
+cli = Typer(name="tsdae", pretty_exceptions_show_locals=False)
 
 decoder_name_desc = """
     디코더로 사용할 모델의 이름 또는 경로,
@@ -70,6 +70,9 @@ def main(
     gradient_clip_val: Optional[float] = Option(
         None, help="Gradient clipping", min=0.0, rich_help_panel="훈련"
     ),
+    accumulate_grad_batches: Optional[int] = Option(
+        None, help="Gradient accumulation", rich_help_panel="훈련"
+    ),
     decoder_name: Optional[str] = Option(
         None, help=decoder_name_desc, rich_help_panel="모델"
     ),
@@ -89,6 +92,7 @@ def main(
     test_run: bool = Option(False, help="훈련 테스트를 실행합니다.", rich_help_panel="훈련"),
     output_path: Optional[str] = Option(None, help="모델을 저장할 경로", rich_help_panel="훈련"),
     wandb_name: Optional[str] = Option(None, help="wandb 이름", rich_help_panel="훈련"),
+    log_every_n_steps: int = Option(50, help="몇 스텝마다 로그를 남길지", rich_help_panel="훈련"),
 ):
     # 모델
     module = KoTSDAEModule(
@@ -137,8 +141,10 @@ def main(
         logger=wandb_logger,
         max_steps=max_steps,
         gradient_clip_val=gradient_clip_val,
-        callbacks=[LearningRateMonitor(), RichProgressBar()],
+        accumulate_grad_batches=accumulate_grad_batches,
+        callbacks=[LearningRateMonitor(logging_interval="step"), RichProgressBar()],
         precision=16,
+        log_every_n_steps=log_every_n_steps,
         fast_dev_run=test_run,
     )
     logger.debug("훈련 시작")
