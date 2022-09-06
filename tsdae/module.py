@@ -67,8 +67,9 @@ class KoTSDAEModule(pl.LightningModule):
             total_steps=self.trainer.estimated_stepping_batches,
             cycle_momentum=cycle_momentum,
         )
+        scheduler_config = {"scheduler": scheduler, "interval": "step"}
 
-        return [optimizer], [scheduler]
+        return [optimizer], [scheduler_config]
 
     def training_step(self, batch, batch_idx):
         features, labels = batch

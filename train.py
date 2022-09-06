@@ -18,7 +18,7 @@ cli = Typer(name="tsdae", pretty_exceptions_show_locals=False)
 
 
 def dedent_text(text: str) -> str:
-    return dedent(decoder_name_desc).strip().replace("\n", " ")
+    return dedent(text).strip().replace("\n", " ")
 
 
 decoder_name_desc = """
@@ -163,7 +163,7 @@ def main(
         log_every_n_steps=log_every_n_steps,
         fast_dev_run=fast_dev_run,
     )
-    logger.debug("훈련 시작")
+    logger.debug(f"훈련 시작, 총 스텝: {trainer.estimated_stepping_batches}")
     trainer.fit(module, train_dataloaders=train_loader)
 
     logger.debug("훈련 종료")
