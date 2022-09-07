@@ -166,8 +166,8 @@ def main(
     ]
 
     trainer = pl.Trainer(
-        accelerator="auto",
-        gpus=1,
+        accelerator="gpu",
+        devices=1,
         logger=wandb_logger,
         max_steps=max_steps,
         gradient_clip_val=gradient_clip_val,

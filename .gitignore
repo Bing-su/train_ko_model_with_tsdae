@@ -125,5 +125,5 @@ dmypy.json
 
 # train results
 wandb/
-result/
-checkpoints/
+result*/
+checkpoints*/

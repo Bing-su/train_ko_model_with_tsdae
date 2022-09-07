@@ -17,9 +17,11 @@ class KoDenoisingAutoEncoderDataset(data.Dataset):
     It is used in combination with the DenoisingAutoEncoderLoss:
         Here, a decoder tries to re-construct the sentence without noise.
 
-    :param dataset: dataset from datasets library
-    :param text_col: str, text column name of the dataset
-    :param p: float, probability of applying noise_fn, 0 <= p <= 1, default: 0.6
+    :param dataset: huggingface datasets 라이브러리의 Dataset 객체
+    :param text_col: str, dataset에서 사용할 텍스트 행 이름
+    :param p: float, 기본 noise 함수에서 적용될 확률값. 0 <= p <= 1, default: 0.6
+    :param noise_fn: Callable[[str], str], 텍스트에 적용할 noise 함수. default: None.
+        None일 경우, 기본 noise 함수를 사용합니다.
     """
 
     def __init__(
