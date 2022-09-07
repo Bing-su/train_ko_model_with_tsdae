@@ -80,5 +80,6 @@ class KoTSDAEModule(pl.LightningModule):
         )
         return loss
 
-    def save(self, path: str):
-        self.model.save(path)
+    @property
+    def save(self):
+        return self.model.save

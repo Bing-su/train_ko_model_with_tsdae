@@ -181,7 +181,7 @@ def main(
     trainer.fit(module, train_dataloaders=train_loader)
 
     logger.debug("훈련 종료")
-    module.model.save(output_path)
+    module.save(output_path)
     logger.debug("모델 저장 완료")
 
 
