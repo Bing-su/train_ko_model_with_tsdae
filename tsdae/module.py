@@ -74,7 +74,7 @@ class KoTSDAEModule(pl.LightningModule):
         cycle_momentum = self.optimizer_name not in ("adan", "adapnm")
         scheduler = torch.optim.lr_scheduler.OneCycleLR(
             optimizer,
-            0.001,
+            0.01,
             total_steps=self.trainer.estimated_stepping_batches,
             cycle_momentum=cycle_momentum,
         )
