@@ -2,11 +2,11 @@ from typing import Optional, Union
 
 import pytorch_lightning as pl
 import torch
-from pytorch_optimizer import load_optimizer
+from loguru import logger
 from sentence_transformers import SentenceTransformer
 from sentence_transformers.losses import DenoisingAutoEncoderLoss
 
-from .util import build_sentence_transformer
+from .util import build_sentence_transformer, create_optimizer
 
 
 class KoTSDAEModule(pl.LightningModule):
@@ -55,15 +55,26 @@ class KoTSDAEModule(pl.LightningModule):
                 "weight_decay": 0.0,
             },
         ]
-        opt_class = load_optimizer(self.optimizer_name)
-        optimizer = opt_class(
-            optimizer_grouped_parameters, lr=self.lr, weight_decay=self.weight_decay
-        )
+        opt_class = create_optimizer(self.optimizer_name)
+        optimizer = opt_class(optimizer_grouped_parameters, lr=self.lr)
 
+        # bnb Embedding 설정
+        if "bnb" in self.optimizer_name:
+            from bitsandbytes.optim import GlobalOptimManager
+
+            manager = GlobalOptimManager.get_instance()
+            for module in self.model.modules():
+                if isinstance(module, torch.nn.Embedding):
+                    manager.register_module_override(
+                        module, "weight", {"optim_bits": 32}
+                    )
+                    logger.debug(f"bitsandbytes: will optimize {module} in fp32")
+
+        # scheduler 설정
         cycle_momentum = self.optimizer_name not in ("adan", "adapnm")
         scheduler = torch.optim.lr_scheduler.OneCycleLR(
             optimizer,
-            0.01,
+            0.001,
             total_steps=self.trainer.estimated_stepping_batches,
             cycle_momentum=cycle_momentum,
         )
@@ -75,9 +86,7 @@ class KoTSDAEModule(pl.LightningModule):
         features, labels = batch
         loss = self.loss(features, labels)
 
-        self.log(
-            "train/loss", loss, on_step=True, on_epoch=True, prog_bar=True, logger=True
-        )
+        self.log("train/loss", loss)
         return loss
 
     @property

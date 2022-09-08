@@ -165,6 +165,11 @@ def main(
         ModelCheckpoint(dirpath="checkpoints", every_n_train_steps=save_steps),
     ]
 
+    # bnb precision 설정
+    # https://pytorch-lightning.readthedocs.io/en/latest/common/precision_intermediate.html#bit-optimizer
+
+    precision = 16 if "bnb" not in optimizer_name else 32
+
     trainer = pl.Trainer(
         accelerator="gpu",
         devices=1,
@@ -173,7 +178,7 @@ def main(
         gradient_clip_val=gradient_clip_val,
         accumulate_grad_batches=accumulate_grad_batches,
         callbacks=callbacks,
-        precision=16,
+        precision=precision,
         log_every_n_steps=log_every_n_steps,
         fast_dev_run=fast_dev_run,
     )
