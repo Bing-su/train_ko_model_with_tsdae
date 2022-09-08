@@ -169,6 +169,7 @@ def main(
     # https://pytorch-lightning.readthedocs.io/en/latest/common/precision_intermediate.html#bit-optimizer
 
     precision = 16 if "bnb" not in optimizer_name else 32
+    logger.debug(f"precision: {precision}")
 
     trainer = pl.Trainer(
         accelerator="gpu",
