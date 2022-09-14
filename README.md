@@ -1,8 +1,8 @@
 # train_ko_model_with_tsdae
 
-TSDAE를 통한 한국어 언어모델 훈련
+[TSDAE](https://www.sbert.net/examples/unsupervised_learning/TSDAE/README.html)를 통한 한국어 언어모델 훈련
 
-### install
+### install dependencies
 
 ```sh
 conda env create -n tsdae -f environment.yaml
