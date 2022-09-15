@@ -81,9 +81,12 @@ def main(
         help="사용할 옵티마이저의 이름, pytorch_optimizer에서 지원하는 옵티마이저",
         rich_help_panel="훈련",
     ),
-    lr: float = Option(1e-4, help="Learning rate", rich_help_panel="훈련"),
+    lr: float = Option(3e-5, help="Learning rate", rich_help_panel="훈련"),
     weight_decay: float = Option(
         1e-5, help="Weight decay", min=0.0, max=1.0, rich_help_panel="훈련"
+    ),
+    max_lr: float = Option(
+        2e-4, help="OneCycleLR의 Max learning rate", rich_help_panel="훈련"
     ),
     batch_size: int = Option(8, help="Batch size", min=1, rich_help_panel="훈련"),
     max_steps: int = Option(1_000_000, help="훈련 스텝 수", rich_help_panel="훈련"),
@@ -122,6 +125,7 @@ def main(
         optimizer_name=optimizer_name,
         lr=lr,
         weight_decay=weight_decay,
+        max_lr=max_lr,
         decoder_name=decoder_name,
         max_seq_length=max_seq_length,
     )

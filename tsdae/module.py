@@ -14,8 +14,9 @@ class KoTSDAEModule(pl.LightningModule):
         self,
         model: Union[str, SentenceTransformer],
         optimizer_name: str = "adamp",
-        lr: float = 5e-5,
+        lr: float = 3e-5,
         weight_decay: float = 0.0,
+        max_lr: float = 2e-4,
         decoder_name: Optional[str] = None,
         max_seq_length: Optional[int] = None,
     ):
@@ -29,6 +30,7 @@ class KoTSDAEModule(pl.LightningModule):
         self.optimizer_name = optimizer_name.lower()
         self.lr = lr
         self.weight_decay = weight_decay
+        self.max_lr = max_lr
 
         if not decoder_name:  # default
             self.loss = DenoisingAutoEncoderLoss(self.model, tie_encoder_decoder=True)
@@ -74,7 +76,7 @@ class KoTSDAEModule(pl.LightningModule):
         cycle_momentum = self.optimizer_name not in ("adan", "adapnm")
         scheduler = torch.optim.lr_scheduler.OneCycleLR(
             optimizer,
-            0.001,
+            self.max_lr,
             total_steps=self.trainer.estimated_stepping_batches,
             cycle_momentum=cycle_momentum,
         )
