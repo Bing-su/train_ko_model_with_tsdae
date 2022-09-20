@@ -40,7 +40,7 @@ class KoDenoisingAutoEncoderDataset(data.Dataset):
         else:
             self.noise_fn = noise_fn
 
-        self.kiwi = Kiwi(num_workers=1, model_type="sbg")
+        self.kiwi = Kiwi(model_type="sbg")
 
     def __getitem__(self, idx: int) -> InputExample:
         text: str = self.dataset[idx][self.text_col]
