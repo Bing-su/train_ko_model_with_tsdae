@@ -89,12 +89,12 @@ def main(
         1e-3, help="OneCycleLR의 Max learning rate", rich_help_panel="훈련"
     ),
     batch_size: int = Option(8, help="Batch size", min=1, rich_help_panel="훈련"),
-    max_steps: int = Option(1_000_000, help="훈련 스텝 수", rich_help_panel="훈련"),
+    max_epochs: int = Option(100, help="훈련 에포크 수", rich_help_panel="훈련"),
     gradient_clip_val: Optional[float] = Option(
         None, help="Gradient clipping", min=0.0, rich_help_panel="훈련"
     ),
     accumulate_grad_batches: Optional[int] = Option(
-        None, help="Gradient accumulation", rich_help_panel="훈련"
+        None, min=1, help="Gradient accumulation", rich_help_panel="훈련"
     ),
     decoder_name: Optional[str] = Option(
         None, help=decoder_name_desc, rich_help_panel="모델"
@@ -166,7 +166,7 @@ def main(
     callbacks = [
         LearningRateMonitor(logging_interval="step"),
         RichProgressBar(refresh_rate=10),
-        ModelCheckpoint(dirpath="checkpoints", every_n_train_steps=save_steps),
+        ModelCheckpoint(dirpath="checkpoints"),
     ]
 
     # bnb precision 설정
@@ -175,11 +175,16 @@ def main(
     precision = 16 if "bnb" not in optimizer_name else 32
     logger.debug(f"precision: {precision}")
 
+    limit_train_batches = save_steps
+    if accumulate_grad_batches is not None:
+        limit_train_batches *= accumulate_grad_batches
+
     trainer = pl.Trainer(
         accelerator="gpu",
         devices=1,
         logger=wandb_logger,
-        max_steps=max_steps,
+        max_epochs=max_epochs,
+        limit_train_batches=limit_train_batches,
         gradient_clip_val=gradient_clip_val,
         accumulate_grad_batches=accumulate_grad_batches,
         callbacks=callbacks,
