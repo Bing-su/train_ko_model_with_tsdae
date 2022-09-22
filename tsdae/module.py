@@ -5,7 +5,6 @@ import torch
 from loguru import logger
 from sentence_transformers import SentenceTransformer
 from sentence_transformers.losses import DenoisingAutoEncoderLoss
-from torchmetrics import BootStrapper, MeanMetric
 
 from .util import build_sentence_transformer, create_optimizer
 
@@ -39,13 +38,6 @@ class KoTSDAEModule(pl.LightningModule):
             self.loss = DenoisingAutoEncoderLoss(
                 self.model, decoder_name, tie_encoder_decoder=False
             )
-
-        self.mean_loss = BootStrapper(
-            MeanMetric(),
-            num_bootstraps=100,
-            compute_on_cpu=True,
-            full_state_update=False,
-        )
 
     def configure_optimizers(self):
         param_optimizer = list(self.model.named_parameters())
@@ -96,9 +88,7 @@ class KoTSDAEModule(pl.LightningModule):
     def training_step(self, batch, batch_idx):
         features, labels = batch
         loss = self.loss(features, labels)
-        self.mean_loss(loss.unsqueeze(0))
-
-        self.log("train/loss", self.mean_loss, on_step=True, on_epoch=True)
+        self.log("train/loss", loss, on_step=True, on_epoch=True)
         return loss
 
     @property
