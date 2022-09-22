@@ -41,7 +41,10 @@ class KoTSDAEModule(pl.LightningModule):
             )
 
         self.mean_loss = BootStrapper(
-            MeanMetric(), num_bootstraps=100, compute_on_cpu=True
+            MeanMetric(),
+            num_bootstraps=100,
+            compute_on_cpu=True,
+            full_state_update=False,
         )
 
     def configure_optimizers(self):
@@ -84,6 +87,7 @@ class KoTSDAEModule(pl.LightningModule):
             self.max_lr,
             total_steps=self.trainer.estimated_stepping_batches,
             cycle_momentum=cycle_momentum,
+            div_factor=10.0,
         )
         scheduler_config = {"scheduler": scheduler, "interval": "step"}
 
@@ -92,7 +96,7 @@ class KoTSDAEModule(pl.LightningModule):
     def training_step(self, batch, batch_idx):
         features, labels = batch
         loss = self.loss(features, labels)
-        self.mean_loss(loss)
+        self.mean_loss(loss.unsqueeze(0))
 
         self.log("train/loss", self.mean_loss, on_step=True, on_epoch=True)
         return loss

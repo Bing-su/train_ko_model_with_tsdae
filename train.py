@@ -86,7 +86,7 @@ def main(
         1e-5, help="Weight decay", min=0.0, max=1.0, rich_help_panel="훈련"
     ),
     max_lr: float = Option(
-        1e-3, help="OneCycleLR의 Max learning rate", rich_help_panel="훈련"
+        3.5e-4, help="OneCycleLR의 Max learning rate", rich_help_panel="훈련"
     ),
     batch_size: int = Option(8, help="Batch size", min=1, rich_help_panel="훈련"),
     max_epochs: int = Option(100, help="훈련 에포크 수", rich_help_panel="훈련"),
